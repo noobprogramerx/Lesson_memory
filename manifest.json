@@ -1,0 +1,23 @@
+{
+  "name": "Lesson Memory",
+  "short_name": "LessonMemory",
+  "description": "レスミルズレッスンの実施曲やフォーマット、インストラクターの記録アプリ",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#06060c",
+  "theme_color": "#06060c",
+  "orientation": "portrait-primary",
+  "scope": "./",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
