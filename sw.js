@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lesson-memory-cache-v16';
+const CACHE_NAME = 'lesson-memory-cache-v27';
 const ASSETS_TO_CACHE = [
   './',
   'index.html',
@@ -57,28 +57,62 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch Event - Network-first with cache fallback strategy
+// Fetch Event - Cache-first for pre-cached assets, network-first for others
 self.addEventListener('fetch', event => {
   // Only handle GET requests and local assets (skip chrome-extension:// etc)
   if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
     return;
   }
 
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        // If successful response, cache it and return
-        if (response && response.status === 200 && response.type === 'basic') {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseToCache);
+  // Parse URL to check if the request matches pre-cached assets
+  const url = new URL(event.request.url);
+  // Match index path or specific pre-cached assets
+  const path = url.pathname.split('/').pop() || './';
+  const isPreCached = ASSETS_TO_CACHE.some(asset => {
+    // Match root path with './'
+    if (asset === './' && url.pathname === self.location.pathname) {
+      return true;
+    }
+    // Match direct filename or trailing relative path
+    return asset === path || url.pathname.endsWith(asset);
+  });
+
+  if (isPreCached) {
+    // Cache-first strategy for pre-cached static assets
+    event.respondWith(
+      caches.match(event.request)
+        .then(cachedResponse => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          // Fallback to network if cache misses (unlikely but safe)
+          return fetch(event.request).then(response => {
+            if (response && response.status === 200) {
+              const responseToCache = response.clone();
+              caches.open(CACHE_NAME).then(cache => {
+                cache.put(event.request, responseToCache);
+              });
+            }
+            return response;
           });
-        }
-        return response;
-      })
-      .catch(() => {
-        // If network fails (offline), return cached version
-        return caches.match(event.request);
-      })
-  );
+        })
+    );
+  } else {
+    // Network-first strategy for dynamic/other local requests
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        })
+    );
+  }
 });
